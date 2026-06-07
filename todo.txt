@@ -1,0 +1,8 @@
+
+
+1. Code Multi Head Casual Attention and check it is working properly or not
+2. Prepare "The Verdict" dataset for training and testing
+3. Code other required componenets 1 by 1 (from hard to easy)
+4. Write basic training loop
+5. Measure metrics
+6.  Check section (03, 04, 05, 06, 07)

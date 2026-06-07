@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug transformer-rust",
+      "cargo": {
+        "args": ["build", "--bin=transformer-rust", "--package=transformer-rust"],
+        "filter": { "name": "transformer-rust", "kind": "bin" }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests",
+      "cargo": {
+        "args": ["test", "--no-run", "--bin=transformer-rust", "--package=transformer-rust"],
+        "filter": { "name": "transformer-rust", "kind": "bin" }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "sourceLanguages": ["rust"]
+    }
+  ]
+}

@@ -11,6 +11,7 @@
       },
       "args": [],
       "cwd": "${workspaceFolder}",
+      "env": { "RUST_BACKTRACE": "1" },
       "sourceLanguages": ["rust"]
     },
     {
@@ -23,6 +24,7 @@
       },
       "args": [],
       "cwd": "${workspaceFolder}",
+      "env": { "RUST_BACKTRACE": "1" },
       "sourceLanguages": ["rust"]
     }
   ]

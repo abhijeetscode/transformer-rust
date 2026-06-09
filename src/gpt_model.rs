@@ -51,7 +51,7 @@ impl GPTModel {
             .forward(x)?
             .broadcast_add(&self.position_embedding.forward(&pos_ids)?)?;
 
-        for blk in &self.transformer_blocks {
+        for (li, blk) in self.transformer_blocks.iter().enumerate() {
             enriched_embedding = blk.forward(&enriched_embedding)?;
         }
         enriched_embedding = self.lnorm.forward(&enriched_embedding)?;

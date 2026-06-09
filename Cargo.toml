@@ -7,5 +7,6 @@ edition = "2024"
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
 candle-transformers = { git = "https://github.com/huggingface/candle.git", features = ["metal"] }
+rand = "0.10.1"
 tiktoken = "3.1.4"
 

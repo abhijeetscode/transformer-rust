@@ -26,16 +26,12 @@ impl Ffn {
 pub struct TransformerBlock {
     multi_head_masked_attention: MultiheadMaskAttention,
     lnorm1: LayerNorm,
-    embed_dim: usize,
-    num_heads: usize,
     ffn: Ffn,
     lnorm2: LayerNorm,
 }
 impl TransformerBlock {
     pub fn new(vb: &VarBuilder, embed_dim: usize, num_heads: usize) -> Result<Self> {
         Ok(Self {
-            embed_dim,
-            num_heads,
             multi_head_masked_attention: MultiheadMaskAttention::new(
                 num_heads,
                 embed_dim,
@@ -53,9 +49,9 @@ impl TransformerBlock {
         let out = (attn + shortcut)?;
 
         let shortcut = &out;
-        let out = self.lnorm2.forward(&out)?;
-        let out = self.ffn.forward(&out)?;
-        let out = (shortcut + out)?;
+        let out2 = self.lnorm2.forward(&out)?;
+        let out3 = self.ffn.forward(&out2)?;
+        let out = (shortcut + out3)?;
         Ok(out)
     }
 }

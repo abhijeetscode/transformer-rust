@@ -2,8 +2,6 @@ use candle_core::{DType, Result, Tensor};
 use candle_nn::ops::softmax_last_dim;
 use candle_nn::{Linear, Module, VarBuilder, linear};
 
-use crate::config::DEVICE;
-
 struct MaskedAttentionHead {
     q: Linear,
     k: Linear,
@@ -27,16 +25,18 @@ impl MaskedAttentionHead {
         let v = self.v.forward(x)?; // (B, L, O)
         let attn_scores = (q.matmul(&k.transpose(1, 2)?)? / (self.head_dim as f64).sqrt())?; // (B, L, L) -> Attention score are always L*L
         let (batch_size, seq_length, _) = attn_scores.dims3()?;
-        let mask: Tensor = Tensor::tril2(seq_length, DType::U8, &DEVICE)?.eq(0u8)?;
+        let mask: Tensor = Tensor::tril2(seq_length, DType::U8, x.device())?.eq(0u8)?;
         let mask = mask.broadcast_as((batch_size, seq_length, seq_length))?;
         let neg_inf_tensor: Tensor = Tensor::full(
             f32::NEG_INFINITY,
             (batch_size, seq_length, seq_length),
-            &DEVICE,
+            x.device(),
         )?
         .to_dtype(attn_scores.dtype())?;
         let attn_scores = mask.where_cond(&neg_inf_tensor, &attn_scores)?; // Masked positions get -inf, unmasked positions remain unchanged    
-        let attn_weights = softmax_last_dim(&attn_scores)?;
+        let scale = 1.0 / (self.head_dim as f64).sqrt();
+        let scaled_attn_scores: Tensor = (attn_scores * scale)?;
+        let attn_weights = softmax_last_dim(&scaled_attn_scores)?;
         let context = attn_weights.matmul(&v)?; // (B, L, O)
         Ok(context)
     }

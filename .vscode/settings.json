@@ -18,5 +18,8 @@
   },
   "search.exclude": {
     "**/target": true
+  },
+  "github.copilot.enable": {
+    "*": false
   }
 }

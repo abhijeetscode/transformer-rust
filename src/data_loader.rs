@@ -15,6 +15,7 @@ pub fn get_train_test_data(filename: &str, split_perc: f64) -> Result<(Vec<u32>,
     for line in read_to_string(filename)?.lines() {
         tokens.extend(encoding.encode(line));
     }
+    println!("Total tokens = {} ", tokens.len());
     let train_size: usize = (split_perc * tokens.len() as f64) as usize;
     let train_data: Vec<u32> = tokens[0..train_size].to_vec();
     let test_data: Vec<u32> = tokens[train_size..].to_vec();

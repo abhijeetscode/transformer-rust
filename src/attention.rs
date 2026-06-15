@@ -1,4 +1,4 @@
-use candle_core::{DType, Result, Tensor};
+use candle_core::{Result, Tensor};
 use candle_nn::ops::softmax_last_dim;
 use candle_nn::{Linear, Module, VarBuilder, linear};
 
@@ -17,26 +17,20 @@ impl MaskedAttentionHead {
             v: linear(embed_dim, head_dim, vb.pp("v"))?,
         })
     }
-    fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    fn forward(&self, x: &Tensor, mask: &Tensor) -> Result<Tensor> {
         // B = Batch Size, L = Max Seq Length, E = embed_dim, O = head dim (generally E//number of heads)
-        // x is (B, L, E)
+        // x is (B, L, E), mask is (max_seq_length, max_seq_length) additive: 0 allowed / -inf future
         let q = self.q.forward(x)?; // (B, L, O)
         let k = self.k.forward(x)?; // (B, L, O)
         let v = self.v.forward(x)?; // (B, L, O)
-        let attn_scores = (q.matmul(&k.transpose(1, 2)?)? / (self.head_dim as f64).sqrt())?; // (B, L, L) -> Attention score are always L*L
-        let (batch_size, seq_length, _) = attn_scores.dims3()?;
-        let mask: Tensor = Tensor::tril2(seq_length, DType::U8, x.device())?.eq(0u8)?;
-        let mask = mask.broadcast_as((batch_size, seq_length, seq_length))?;
-        let neg_inf_tensor: Tensor = Tensor::full(
-            f32::NEG_INFINITY,
-            (batch_size, seq_length, seq_length),
-            x.device(),
-        )?
-        .to_dtype(attn_scores.dtype())?;
-        let attn_scores = mask.where_cond(&neg_inf_tensor, &attn_scores)?; // Masked positions get -inf, unmasked positions remain unchanged    
+        let attn_scores = q.matmul(&k.transpose(1, 2)?)?; // (B, L, L) -> Attention score are always L*L
+        let (_, seq_length, _) = attn_scores.dims3()?;
         let scale = 1.0 / (self.head_dim as f64).sqrt();
         let scaled_attn_scores: Tensor = (attn_scores * scale)?;
-        let attn_weights = softmax_last_dim(&scaled_attn_scores)?;
+        // slice the prebuilt mask to this batch's seq length, then add (broadcast over batch)
+        let m = mask.narrow(0, 0, seq_length)?.narrow(1, 0, seq_length)?; // (L, L)
+        let masked: Tensor = scaled_attn_scores.broadcast_add(&m)?; // future positions -> -inf
+        let attn_weights = softmax_last_dim(&masked)?;
         let context = attn_weights.matmul(&v)?; // (B, L, O)
         Ok(context)
     }
@@ -66,10 +60,10 @@ impl MultiheadMaskAttention {
             out,
         })
     }
-    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self, x: &Tensor, mask: &Tensor) -> Result<Tensor> {
         let mut tensors: Vec<Tensor> = Vec::new();
         for i in 0..self.num_heads {
-            tensors.push(self.heads[i].forward(x)?); // each (Batch Size, Seq length, Head dim)
+            tensors.push(self.heads[i].forward(x, mask)?); // each (Batch Size, Seq length, Head dim)
         }
         let tensor = Tensor::cat(&tensors, 2)?;
         let tensor = self.out.forward(&tensor)?;

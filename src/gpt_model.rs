@@ -43,7 +43,7 @@ impl GPTModel {
             num_layers,
         })
     }
-    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self, x: &Tensor, mask: &Tensor) -> Result<Tensor> {
         let (_, seq_length) = x.dims2()?;
         let pos_ids = Tensor::arange(0u32, seq_length as u32, x.device())?;
         let mut enriched_embedding: Tensor = self
@@ -51,8 +51,8 @@ impl GPTModel {
             .forward(x)?
             .broadcast_add(&self.position_embedding.forward(&pos_ids)?)?;
 
-        for (li, blk) in self.transformer_blocks.iter().enumerate() {
-            enriched_embedding = blk.forward(&enriched_embedding)?;
+        for blk in self.transformer_blocks.iter() {
+            enriched_embedding = blk.forward(&enriched_embedding, mask)?;
         }
         enriched_embedding = self.lnorm.forward(&enriched_embedding)?;
         enriched_embedding = self.output_layer.forward(&enriched_embedding)?;

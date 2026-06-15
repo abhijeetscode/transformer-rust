@@ -42,10 +42,10 @@ impl TransformerBlock {
             lnorm2: layer_norm(embed_dim, LayerNormConfig::default(), vb.pp("layer_norm2"))?,
         })
     }
-    pub fn forward(&self, x: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self, x: &Tensor, mask: &Tensor) -> Result<Tensor> {
         let shortcut = x;
         let h = self.lnorm1.forward(x)?;
-        let attn: Tensor = self.multi_head_masked_attention.forward(&h)?;
+        let attn: Tensor = self.multi_head_masked_attention.forward(&h, mask)?;
         let out = (attn + shortcut)?;
 
         let shortcut = &out;

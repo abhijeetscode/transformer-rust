@@ -9,6 +9,12 @@ default) with Metal GPU acceleration on macOS.
 - **Do NOT add a `Co-Authored-By` trailer (or any AI attribution) to commit messages.**
 - Keep commit messages concise and descriptive of the change.
 
+## Conversation summaries
+
+- Always write a summary of the important points from each conversation to
+  `docs/conversations/`. Name files `YYYY-MM-DD-<short-topic>.md`. Capture
+  decisions, changes made, and open follow-ups — not every message.
+
 ## Project layout
 
 | File                        | Responsibility                                          |

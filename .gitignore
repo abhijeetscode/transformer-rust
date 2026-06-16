@@ -2,3 +2,4 @@
 /dataset
 .idea/
 *.safetensors
+/tokenizer.json

@@ -5,8 +5,10 @@ mod gpt_model;
 mod tokenizer;
 mod transformer_block;
 
-use crate::config::ENCODING_NAME;
+use core::f32;
+
 use crate::gpt_model::GPTModel;
+use crate::tokenizer::load_tokenizer;
 use candle_core::DType;
 use candle_core::DType::F32;
 use candle_core::Result;
@@ -20,9 +22,8 @@ use candle_nn::{AdamW, Optimizer, ParamsAdamW};
 use config::{BATCH_SIZE, CONTEXT_SIZE, EMBED_DIM, NUM_HEADS, NUM_LAYERS};
 
 use config::device;
-use data_loader::{get_batch, get_train_test_data};
+use data_loader::{get_batch, get_data_splits};
 use rand::seq::SliceRandom;
-use tiktoken::get_encoding;
 
 fn evaluate_model(gpt_model: &GPTModel, data: &Vec<u32>, mask: &Tensor) -> Result<f32> {
     let starts: Vec<usize> = (0..data.len() - CONTEXT_SIZE - 1)
@@ -43,18 +44,19 @@ fn evaluate_model(gpt_model: &GPTModel, data: &Vec<u32>, mask: &Tensor) -> Resul
     Ok(total_loss / num_batch as f32)
 }
 fn main() -> Result<()> {
-    let (train_data, test_data) = get_train_test_data("./dataset/tiny_shakespere.txt", 0.9)?;
+    let (train_data, eval_data, test_data) =
+        get_data_splits("./dataset/tiny_shakespere.txt", 0.8, 0.1)?;
 
     println!(
-        "train_data len: {}, test_data len: {}",
+        "train_data len: {}, eval_data len: {}, test_data len: {}",
         train_data.len(),
+        eval_data.len(),
         test_data.len()
     );
-    let encoding = get_encoding(ENCODING_NAME)
-        .ok_or_else(|| candle_core::Error::msg(format!("unknown encoding: {}", ENCODING_NAME)))?;
-    let vocab_size = encoding.vocab_size();
+    let tokenizer = load_tokenizer().map_err(|e| candle_core::Error::msg(e.to_string()))?;
+    let vocab_size = tokenizer.get_vocab_size(true);
     let max_seq_length: usize = CONTEXT_SIZE;
-    let varmap = VarMap::new();
+    let mut varmap = VarMap::new();
     let vb = VarBuilder::from_varmap(&varmap, DType::F32, device());
     let gpt_model = GPTModel::new(
         vocab_size,
@@ -91,7 +93,9 @@ fn main() -> Result<()> {
         let mut rng = rand::rng();
         let mut shuffled = starts.clone();
         shuffled.shuffle(&mut rng);
-        let mut loss_epoch = 0.0;
+
+        let mut loss_sum: Option<Tensor> = None;
+
         let mut num_batches = 0usize;
         for chunk in shuffled.chunks(BATCH_SIZE) {
             let (xs, ys) = get_batch(&train_data, chunk, CONTEXT_SIZE, device())?;
@@ -101,12 +105,19 @@ fn main() -> Result<()> {
             let logits = logits.reshape((b * t, v))?;
             let ys: Tensor = ys.reshape(b * t)?;
             let loss: Tensor = cross_entropy(&logits, &ys)?;
-            loss_epoch += loss.to_scalar::<f32>()?;
             opt.backward_step(&loss)?;
+            let detached = loss.detach();
+            loss_sum = Some(match loss_sum {
+                Some(s) => (s + detached)?,
+                None => detached,
+            });
             num_batches += 1;
         }
-        let train_loss: f32 = loss_epoch / num_batches as f32;
-        let val_loss: f32 = evaluate_model(&gpt_model, &test_data, &mask_additive)?;
+        let train_loss: f32 = match loss_sum {
+            Some(s) => s.to_scalar::<f32>()? / num_batches as f32,
+            None => 0.0,
+        };
+        let val_loss: f32 = evaluate_model(&gpt_model, &eval_data, &mask_additive)?;
 
         println!(
             "Epoch {} Train Loss {} Val Loss {}",
@@ -130,6 +141,11 @@ fn main() -> Result<()> {
             }
         }
     }
+
+    // Final, one-time evaluation on the held-out test set, using the BEST model.
+    varmap.load("best_model.safetensors")?;
+    let test_loss = evaluate_model(&gpt_model, &test_data, &mask_additive)?;
+    println!("FINAL held-out test loss (best model): {test_loss:.4}");
 
     Ok(())
 }

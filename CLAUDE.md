@@ -23,18 +23,22 @@ default) with Metal GPU acceleration on macOS.
 | `src/gpt_model.rs`          | Full GPT model (embeddings → blocks → output head)      |
 | `src/transformer_block.rs`  | Pre-norm transformer block + feed-forward network       |
 | `src/attention.rs`          | Single attention head + multi-head causal attention     |
-| `src/data_loader.rs`        | Tokenization, train/test split, batching                |
-| `src/config.rs`             | Device selection, context size, tokenizer name          |
+| `src/tokenizer.rs`          | Train/load byte-level BPE tokenizer (HF `tokenizers`)   |
+| `src/data_loader.rs`        | Raw-text split, tokenizer training, encoding, batching  |
+| `src/config.rs`             | Device selection, context size, `VOCAB_SIZE`            |
 
 ## Key facts
 
 - Device defaults to **Metal** (`src/config.rs`); swap to `Device::Cpu` there to run on CPU.
 - Rust **edition 2024** — needs a recent toolchain (1.85+).
-- Tokenizer is `r50k_base` BPE via the `tiktoken` crate.
-- Default model shape (≈ GPT-2 small): `embed_dim` 768, `num_heads` 12, `num_layers` 12,
-  `context_size` 1024 — set in `src/main.rs` and `src/config.rs`.
-- Training data lives in `./dataset/` (git-ignored). Model checkpoints write to
-  `best_model.safetensors` (also git-ignored).
+- Tokenizer is a **byte-level BPE** trained on the *training split only* via the HuggingFace
+  `tokenizers` crate; `VOCAB_SIZE` (default 1024) caps unique tokens. Base alphabet is the
+  256 bytes, so merges = `VOCAB_SIZE - 256 - specials`. Saved to `tokenizer.json`.
+- Vocab is kept small on purpose: embedding/output tables scale with `vocab_size × embed_dim`,
+  so a 50k vocab dominated params for a ~268k-token dataset.
+- Training data lives in `./dataset/` (git-ignored); the training split is also written to
+  `./dataset/train_split.txt`. Model checkpoints write to `best_model.safetensors`,
+  tokenizer to `tokenizer.json` (all git-ignored).
 
 ## Build / run
 

@@ -15,4 +15,3 @@ candle-transformers = { git = "https://github.com/huggingface/candle.git", featu
     "metal",
 ] }
 rand = "0.10.1"
-tiktoken = "3.1.4"

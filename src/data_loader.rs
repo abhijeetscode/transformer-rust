@@ -9,12 +9,12 @@ pub fn get_train_test_data(filename: &str, split_perc: f64) -> Result<(Vec<u32>,
             "split_perc must be between 0 and 1",
         ));
     }
+
     let encoding = get_encoding(ENCODING_NAME)
         .ok_or_else(|| candle_core::Error::msg(format!("unknown encoding: {}", ENCODING_NAME)))?;
+    let content = read_to_string(filename)?;
     let mut tokens: Vec<u32> = Vec::new();
-    for line in read_to_string(filename)?.lines() {
-        tokens.extend(encoding.encode(line));
-    }
+    tokens.extend(encoding.encode(&content));
     println!("Total tokens = {} ", tokens.len());
     let train_size: usize = (split_perc * tokens.len() as f64) as usize;
     let train_data: Vec<u32> = tokens[0..train_size].to_vec();

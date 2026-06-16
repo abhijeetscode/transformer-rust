@@ -12,3 +12,4 @@ pub const NUM_HEADS: usize = 8;
 pub const NUM_LAYERS: usize = 12;
 pub const ENCODING_NAME: &str = "r50k_base";
 pub const BATCH_SIZE: usize = 3;
+pub const VOCAB_SIZE: usize = 256;

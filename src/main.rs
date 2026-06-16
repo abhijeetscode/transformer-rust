@@ -2,6 +2,7 @@ mod attention;
 mod config;
 mod data_loader;
 mod gpt_model;
+mod tokenizer;
 mod transformer_block;
 
 use crate::config::ENCODING_NAME;
@@ -65,7 +66,6 @@ fn main() -> Result<()> {
     )?;
     let num_params: usize = varmap.all_vars().iter().map(|v| v.elem_count()).sum();
     println!("Num Params = {}", num_params);
-    return Ok(());
     let mut opt = AdamW::new(
         varmap.all_vars(),
         ParamsAdamW {
